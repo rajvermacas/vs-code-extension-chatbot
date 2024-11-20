@@ -28,22 +28,68 @@ export function activate(context: vscode.ExtensionContext) {
                 switch (message.command) {
                     case 'sendMessage':
                         try {
-                            // Send message to LLM
+                            // Show thinking indicator
+                            panel.webview.postMessage({
+                                command: 'receiveMessage',
+                                text: '__thinking__'
+                            });
+
+                            // Send message to LLM with streaming enabled
                             const response = await axios.post(apiEndpoint, {
                                 model: modelName,
                                 messages: [
                                     { role: 'user', content: message.text }
                                 ],
-                                stream: false
+                                stream: true
+                            }, {
+                                responseType: 'stream'
                             });
 
-                            // Send response back to webview
+                            // Clear thinking indicator and start stream
                             panel.webview.postMessage({
                                 command: 'receiveMessage',
-                                text: response.data.choices[0].message.content
+                                text: '__clear_thinking__'
                             });
+                            panel.webview.postMessage({
+                                command: 'receiveMessage',
+                                text: '__start_stream__'
+                            });
+
+                            let currentMessage = '';
+                            response.data.on('data', (chunk: Buffer) => {
+                                const lines = chunk.toString().split('\n').filter(line => line.trim() !== '');
+                                for (const line of lines) {
+                                    if (line.includes('[DONE]')) {
+                                        panel.webview.postMessage({
+                                            command: 'receiveMessage',
+                                            text: '__end_stream__'
+                                        });
+                                        continue;
+                                    }
+                                    if (line.startsWith('data: ')) {
+                                        try {
+                                            const data = JSON.parse(line.slice(6));
+                                            if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                                                currentMessage += data.choices[0].delta.content;
+                                                panel.webview.postMessage({
+                                                    command: 'receiveMessage',
+                                                    text: currentMessage
+                                                });
+                                            }
+                                        } catch (e) {
+                                            console.error('Error parsing streaming response:', e);
+                                        }
+                                    }
+                                }
+                            });
+
                         } catch (error) {
                             vscode.window.showErrorMessage(`Failed to send message: ${error}`);
+                            // Clear thinking indicator in case of error
+                            panel.webview.postMessage({
+                                command: 'receiveMessage',
+                                text: '__clear_thinking__'
+                            });
                         }
                         break;
                 }
@@ -135,6 +181,12 @@ function getWebviewContent() {
                 border: 1px solid #404040;
                 border-bottom-left-radius: 4px;
             }
+            .thinking {
+                background-color: #2d2d2d;
+                border: 1px solid #404040;
+                border-bottom-left-radius: 4px;
+                color: #888888;
+            }
         </style>
     </head>
     <body>
@@ -178,12 +230,39 @@ function getWebviewContent() {
             // Listen for messages from the extension
             window.addEventListener('message', (event) => {
                 const message = event.data;
-                if (message.command === 'receiveMessage') {
-                    const botMessageEl = document.createElement('div');
-                    botMessageEl.classList.add('message', 'bot-message');
-                    botMessageEl.textContent = message.text;
-                    chatContainer.appendChild(botMessageEl);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                switch (message.command) {
+                    case 'receiveMessage':
+                        if (message.text === '__thinking__') {
+                            const botMessageEl = document.createElement('div');
+                            botMessageEl.classList.add('message', 'bot-message', 'thinking');
+                            botMessageEl.id = 'thinking-message';
+                            botMessageEl.textContent = 'Thinking...';
+                            chatContainer.appendChild(botMessageEl);
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        } else if (message.text === '__clear_thinking__') {
+                            const thinkingMessage = document.getElementById('thinking-message');
+                            if (thinkingMessage) {
+                                thinkingMessage.remove();
+                            }
+                        } else if (message.text === '__start_stream__') {
+                            const botMessageEl = document.createElement('div');
+                            botMessageEl.classList.add('message', 'bot-message');
+                            botMessageEl.id = 'current-stream-message';
+                            chatContainer.appendChild(botMessageEl);
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        } else if (message.text === '__end_stream__') {
+                            const streamMessage = document.getElementById('current-stream-message');
+                            if (streamMessage) {
+                                streamMessage.id = '';  // Clear the ID as this message is complete
+                            }
+                        } else {
+                            const streamMessage = document.getElementById('current-stream-message');
+                            if (streamMessage) {
+                                streamMessage.textContent = message.text;
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                            }
+                        }
+                        break;
                 }
             });
         </script>
