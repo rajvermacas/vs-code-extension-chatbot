@@ -71,33 +71,69 @@ function getWebviewContent() {
                 flex-direction: column;
                 height: 100vh;
                 margin: 0;
+                background-color: #1e1e1e;
+                color: #e0e0e0;
             }
             #chat-container {
                 flex-grow: 1;
                 overflow-y: auto;
-                padding: 10px;
+                padding: 16px;
+                scroll-behavior: smooth;
             }
             #message-form {
                 display: flex;
-                padding: 10px;
-                background-color: #f0f0f0;
+                padding: 16px;
+                background-color: #2d2d2d;
+                border-top: 1px solid #404040;
+                gap: 12px;
             }
             #message-input {
                 flex-grow: 1;
-                margin-right: 10px;
-                padding: 5px;
+                padding: 12px;
+                border-radius: 8px;
+                border: 1px solid #404040;
+                background-color: #363636;
+                color: #e0e0e0;
+                font-size: 14px;
+                transition: border-color 0.2s;
+            }
+            #message-input:focus {
+                outline: none;
+                border-color: #0078d4;
+            }
+            #message-input::placeholder {
+                color: #888888;
+            }
+            button {
+                padding: 8px 16px;
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+                transition: background-color 0.2s;
+            }
+            button:hover {
+                background-color: #0086ef;
             }
             .message {
-                margin-bottom: 10px;
-                padding: 8px;
-                border-radius: 4px;
+                margin-bottom: 12px;
+                padding: 12px 16px;
+                border-radius: 8px;
+                max-width: 80%;
+                line-height: 1.4;
             }
             .user-message {
-                background-color: #e6f2ff;
-                text-align: right;
+                background-color: #0078d4;
+                color: white;
+                margin-left: auto;
+                border-bottom-right-radius: 4px;
             }
             .bot-message {
-                background-color: #f0f0f0;
+                background-color: #2d2d2d;
+                border: 1px solid #404040;
+                border-bottom-left-radius: 4px;
             }
         </style>
     </head>
@@ -113,6 +149,9 @@ function getWebviewContent() {
             const chatContainer = document.getElementById('chat-container');
             const messageForm = document.getElementById('message-form');
             const messageInput = document.getElementById('message-input');
+
+            // Auto-focus the input box when the window opens
+            messageInput.focus();
 
             messageForm.addEventListener('submit', (e) => {
                 e.preventDefault();

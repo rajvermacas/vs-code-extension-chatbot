@@ -2,7 +2,7 @@
   "name": "codebase-chatbot",
   "displayName": "Codebase Chatbot",
   "description": "Chat with your codebase using a local LLM",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "codebase-chatbot",
   "engines": {
     "vscode": "^1.85.0"
